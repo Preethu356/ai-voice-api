@@ -48,8 +48,10 @@ async def honeypot(
 ):
     verify_api_key(x_api_key)
 
-    # ✅ FIXED LINE (THIS WAS THE BUG)
-    msg = payload.message.lower()
+    try:
+        msg = payload.message.lower()
+    except Exception:
+        msg = ""
 
     scam_keywords = [
         "bank", "otp", "blocked", "click", "urgent",
@@ -68,10 +70,3 @@ async def honeypot(
             "No action required."
         )
     }
-
-# ===============================
-# HEALTH CHECK (IMPORTANT)
-# ===============================
-@app.get("/")
-async def root():
-    return {"status": "ok"}
