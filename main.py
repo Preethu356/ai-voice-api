@@ -41,32 +41,54 @@ async def voice_detection(
 class HoneypotRequest(BaseModel):
     message: str
 
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+
+app = FastAPI()
+
+API_KEY = "sarvadamana-ai-voice-2026"
+
+
+# ---------- Honeypot Models ----------
+class HoneypotRequest(BaseModel):
+    message: str
+
+
+# ---------- GET Honeypot (Guvi requires this) ----------
+@app.get("/honeypot")
+def honeypot_get(x_api_key: Optional[str] = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return {
+        "status": "ready",
+        "message": "Honeypot endpoint reachable"
+    }
+
+
+# ---------- POST Honeypot ----------
 @app.post("/honeypot")
-async def honeypot(
+def honeypot_post(
     payload: HoneypotRequest,
     x_api_key: Optional[str] = Header(None)
 ):
-    verify_api_key(x_api_key)
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
-    try:
-        msg = payload.message.lower()
-    except Exception:
-        msg = ""
+    msg = payload.message.lower()
 
-    scam_keywords = [
-        "bank", "otp", "blocked", "click", "urgent",
-        "verify", "account", "password", "link"
-    ]
-
-    detected = any(word in msg for word in scam_keywords)
+    if any(word in msg for word in ["bank", "otp", "blocked", "urgent", "click", "account"]):
+        return {
+            "scam_detected": True,
+            "scam_type": "banking_fraud",
+            "risk_score": 0.9,
+            "recommended_action": "Do not respond. Block and report."
+        }
 
     return {
-        "scam_detected": detected,
-        "scam_type": "banking_fraud" if detected else "none",
-        "risk_score": 0.9 if detected else 0.1,
-        "recommended_action": (
-            "Do not respond. Block and report."
-            if detected else
-            "No action required."
-        )
+        "scam_detected": False,
+        "scam_type": "none",
+        "risk_score": 0.1,
+        "recommended_action": "No action required."
     }
