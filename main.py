@@ -41,18 +41,6 @@ async def voice_detection(
 class HoneypotRequest(BaseModel):
     message: str
 
-from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-
-app = FastAPI()
-
-API_KEY = "sarvadamana-ai-voice-2026"
-
-
-# ---------- Honeypot Models ----------
-class HoneypotRequest(BaseModel):
-    message: str
 
 
 # ---------- GET Honeypot (Guvi requires this) ----------
