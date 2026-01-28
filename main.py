@@ -26,10 +26,6 @@ async def voice_detection(payload: dict = Body(...)):
         "audio_format": audio_format,
         "status": "success"
     }
-from fastapi import FastAPI, Body, HTTPException
-
-app = FastAPI()
-
 
 @app.post("/voice-detection")
 async def voice_detection(payload: dict = Body(...)):
