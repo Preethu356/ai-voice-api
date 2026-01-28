@@ -26,7 +26,7 @@ async def voice_detection(request: Request, x_api_key: str = Header(None)):
     audio_format = (
         body.get("audio_format")
         or body.get("audioFormat")
-        or "mp3"
+        or "wav"
     )
     audio_base64 = (
         body.get("audio_base64")
