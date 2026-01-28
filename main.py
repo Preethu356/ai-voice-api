@@ -1,16 +1,26 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from pydantic import ConfigDict
 
 app = FastAPI()
 
 
 class VoiceRequest(BaseModel):
     language: str = "en"
-    audio_format: str = Field(..., alias="audioFormat")
-    audio_base64: str = Field(..., alias="audioBase64")
 
-    class Config:
-        allow_population_by_field_name = True
+    audio_format: str = Field(
+        ...,
+        validation_alias="audioFormat"
+    )
+
+    audio_base64: str = Field(
+        ...,
+        validation_alias="audioBase64"
+    )
+
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
 
 
 @app.post("/voice-detection")
