@@ -1,14 +1,12 @@
 from fastapi import FastAPI, Header, HTTPException, Request
-from typing import Optional, Any
+from typing import Optional
 
 app = FastAPI()
 
 API_KEY = "sarvadamana-ai-voice-2026"
 
 
-# =========================
-# VOICE DETECTION (already working)
-# =========================
+# ---------------- VOICE DETECTION ----------------
 @app.post("/voice-detection")
 async def voice_detection(payload: dict, x_api_key: Optional[str] = Header(None)):
     if x_api_key != API_KEY:
@@ -21,21 +19,16 @@ async def voice_detection(payload: dict, x_api_key: Optional[str] = Header(None)
     }
 
 
-# =========================
-# HONEYPOT – GET (Guvi ping)
-# =========================
+# ---------------- HONEYPOT GET (Guvi ping) ----------------
 @app.get("/honeypot")
 async def honeypot_get():
-    # IMPORTANT: no auth check here
     return {
         "status": "ready",
         "service": "honeypot"
     }
 
 
-# =========================
-# HONEYPOT – POST (Guvi test)
-# =========================
+# ---------------- HONEYPOT POST ----------------
 @app.post("/honeypot")
 async def honeypot_post(
     request: Request,
@@ -46,25 +39,23 @@ async def honeypot_post(
 
     payload = await request.json()
 
-    # --- Extract message safely ---
     message = ""
 
     if isinstance(payload, dict):
-        msg = payload.get("message")
+        raw = payload.get("message")
 
-        if isinstance(msg, str):
-            message = msg
-        elif isinstance(msg, dict):
-            message = str(msg.get("text", ""))
-        elif isinstance(msg, list) and len(msg) > 0:
-            message = str(msg[0])
+        if isinstance(raw, str):
+            message = raw
+        elif isinstance(raw, dict):
+            message = str(raw.get("text", ""))
+        elif isinstance(raw, list) and raw:
+            message = str(raw[0])
 
     message = message.lower()
 
-    # --- Simple scam logic ---
-    scam_keywords = ["bank", "otp", "blocked", "urgent", "click", "account"]
+    scam_words = ["bank", "otp", "blocked", "click", "urgent", "account"]
 
-    if any(word in message for word in scam_keywords):
+    if any(word in message for word in scam_words):
         return {
             "scam_detected": True,
             "scam_type": "banking_fraud",
