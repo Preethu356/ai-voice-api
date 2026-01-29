@@ -7,6 +7,17 @@ API_KEY = "sarvadamana-ai-voice-2026"
 
 
 # ---------------- VOICE DETECTION ----------------
+
+def voice_explanation(is_ai_generated: bool) -> str:
+    if is_ai_generated:
+        return (
+            "Detected characteristics consistent with AI-generated speech, "
+            "including uniform pitch distribution and synthetic spectral patterns."
+        )
+    return (
+        "Detected characteristics consistent with human speech, "
+        "including natural pitch variation and environmental noise."
+    )
 @app.post("/voice-detection")
 async def voice_detection(
     payload: dict,
@@ -28,8 +39,10 @@ async def voice_detection(
         "language": language.capitalize(),
         "classification": "AI_GENERATED" if is_ai_generated else "HUMAN",
         "confidenceScore": confidence,
-        "explanation": _voice_explanation(is_ai_generated),
-
+        "explanation": ( "Detected characteristics consistent with AI-generated speech"
+    if is_ai_generated
+    else "Detected characteristics consistent with human speech"
+),
         # backward compatibility
         "is_ai_generated": is_ai_generated,
         "confidence_score": confidence
