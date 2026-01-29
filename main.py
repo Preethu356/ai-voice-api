@@ -18,15 +18,20 @@ async def voice_detection(
 
     # --- Basic validation ---
     language = payload.get("language", "en")
-    audio_format = payload.get("audio_format")
-    audio_base64 = payload.get("audio_base64")
+audio_format = payload.get("audio_format", "").lower()
+audio_base64 = payload.get("audio_base64", "")
 
-    if not audio_format or not audio_base64:
-        raise HTTPException(
-            status_code=422,
-            detail="audio_format and audio_base64 are required"
-        )
+if audio_format not in {"mp3", "wav"}:
+    raise HTTPException(
+        status_code=422,
+        detail="audio_format must be mp3 or wav"
+    )
 
+if not audio_base64:
+    raise HTTPException(
+        status_code=422,
+        detail="audio_base64 is required"
+    )
     # --- Supported languages ---
     allowed_languages = {"en", "hi", "ta", "te", "ml"}
     if language.lower() not in allowed_languages:
@@ -55,7 +60,12 @@ async def voice_detection(
         "confidence_score": confidence_score,     # backward compatibility
         "explanation": explanation
     }
-
+@app.get("/voice-detection")
+async def voice_detection_get():
+    return {
+        "status": "active",
+        "message": "Voice detection endpoint is live. Use POST to submit audio."
+    }
 
 import uuid
 from fastapi import Header, HTTPException
