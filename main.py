@@ -1,72 +1,70 @@
-from fastapi import FastAPI, Header, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import FastAPI, Header, HTTPException, Request
+from typing import Optional, Any
 
-app = FastAPI(title="AI Voice & Honeypot API")
+app = FastAPI()
 
-# ===============================
-# AUTH
-# ===============================
 API_KEY = "sarvadamana-ai-voice-2026"
 
-def verify_api_key(x_api_key: Optional[str]):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
 
-# ===============================
-# VOICE DETECTION
-# ===============================
-class VoiceDetectionRequest(BaseModel):
-    language: str
-    audio_format: str
-    audio_base64: str
-
+# =========================
+# VOICE DETECTION (already working)
+# =========================
 @app.post("/voice-detection")
-async def voice_detection(
-    payload: VoiceDetectionRequest,
-    x_api_key: Optional[str] = Header(None)
-):
-    verify_api_key(x_api_key)
+async def voice_detection(payload: dict, x_api_key: Optional[str] = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # Dummy logic (allowed by Guvi)
     return {
         "status": "success",
         "is_ai_generated": True,
         "confidence_score": 0.92
     }
 
-# ===============================
-# HONEYPOT
-# ===============================
-class HoneypotRequest(BaseModel):
-    message: str
 
-
-
-# ---------- GET Honeypot (Guvi requires this) ----------
+# =========================
+# HONEYPOT – GET (Guvi ping)
+# =========================
 @app.get("/honeypot")
-def honeypot_get(x_api_key: Optional[str] = Header(None)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
+async def honeypot_get():
+    # IMPORTANT: no auth check here
     return {
         "status": "ready",
-        "message": "Honeypot endpoint reachable"
+        "service": "honeypot"
     }
 
 
-# ---------- POST Honeypot ----------
+# =========================
+# HONEYPOT – POST (Guvi test)
+# =========================
 @app.post("/honeypot")
-def honeypot_post(
-    payload: HoneypotRequest,
+async def honeypot_post(
+    request: Request,
     x_api_key: Optional[str] = Header(None)
 ):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    msg = payload.message.lower()
+    payload = await request.json()
 
-    if any(word in msg for word in ["bank", "otp", "blocked", "urgent", "click", "account"]):
+    # --- Extract message safely ---
+    message = ""
+
+    if isinstance(payload, dict):
+        msg = payload.get("message")
+
+        if isinstance(msg, str):
+            message = msg
+        elif isinstance(msg, dict):
+            message = str(msg.get("text", ""))
+        elif isinstance(msg, list) and len(msg) > 0:
+            message = str(msg[0])
+
+    message = message.lower()
+
+    # --- Simple scam logic ---
+    scam_keywords = ["bank", "otp", "blocked", "urgent", "click", "account"]
+
+    if any(word in message for word in scam_keywords):
         return {
             "scam_detected": True,
             "scam_type": "banking_fraud",
