@@ -56,85 +56,100 @@ async def voice_detection(
         "explanation": explanation
     }
 
-API_KEY = "sarvadamana-ai-voice-2026"
 
+import uuid
+from fastapi import Header, HTTPException
+from typing import Optional
 
-def _extract_message(payload: dict) -> str:
-    raw = payload.get("message", "")
-
-    if isinstance(raw, str):
-        return raw.lower()
-
-    if isinstance(raw, dict):
-        return str(raw.get("text", "")).lower()
-
-    if isinstance(raw, list) and raw:
-        return str(raw[0]).lower()
-
-    return ""
-
-
-def _evaluate_risk(message: str) -> tuple[bool, float, str]:
-    score = 0.2
-    scam_type = "none"
-
-    if any(w in message for w in ("bank", "account", "otp", "blocked")):
-        score += 0.4
-        scam_type = "banking_fraud"
-
-    if any(w in message for w in ("upi", "pay", "transfer")):
-        score += 0.2
-        scam_type = "payment_scam"
-
-    if any(w in message for w in ("urgent", "verify", "immediately")):
-        score += 0.1
-
-    if any(w in message for w in ("http", "www", "click")):
-        score += 0.1
-
-    score = min(round(score, 2), 0.95)
-    return score > 0.5, score, scam_type
-
-
-# -----------------------------
-# GET Honeypot (GUVI ping)
-# -----------------------------
-@app.get("/honeypot")
-async def honeypot_get():
+# ----------------------------
+# Root health check (Fix #3)
+# ----------------------------
+@app.get("/")
+async def root():
     return {
-        "status": "ready",
-        "service": "honeypot"
+        "status": "ok",
+        "service": "ai-fraud-detection-api"
     }
 
 
-# -----------------------------
-# POST Honeypot (Intelligence)
-# -----------------------------
+# ----------------------------
+# Honeypot keyword map
+# ----------------------------
+SCAM_KEYWORDS = {
+    "bank": "banking_fraud",
+    "account": "banking_fraud",
+    "otp": "otp_scam",
+    "click": "phishing",
+    "verify": "phishing",
+    "blocked": "banking_fraud"
+}
+
+
+def analyze_message(message: str):
+    indicators = []
+    scam_type = "none"
+
+    msg = message.lower()
+
+    for keyword, category in SCAM_KEYWORDS.items():
+        if keyword in msg:
+            indicators.append(keyword)
+            scam_type = category
+
+    scam_detected = len(indicators) > 0
+    risk_score = 0.9 if scam_detected else 0.1
+
+    return scam_detected, scam_type, risk_score, indicators
+
+
+# ----------------------------
+# Honeypot POST (Fix #1 & #2)
+# ----------------------------
 @app.post("/honeypot")
-async def honeypot_post(
-    request: Request,
+async def honeypot(
+    payload: dict,
     x_api_key: Optional[str] = Header(None)
 ):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
+    message = payload.get("message", "")
+    msg = message.lower() if isinstance(message, str) else ""
 
-    message = _extract_message(payload)
-    scam_detected, risk_score, scam_type = _evaluate_risk(message)
+    # --- Detection logic ---
+    indicators = []
+    scam_detected = False
+    scam_type = "none"
+    risk_score = 0.1
+
+    if "account" in msg:
+        indicators.append("account_related")
+    if "blocked" in msg or "suspended" in msg:
+        indicators.append("account_blocked")
+    if "click" in msg or "link" in msg:
+        indicators.append("suspicious_link")
+    if "otp" in msg or "verification" in msg:
+        indicators.append("otp_request")
+    if "urgent" in msg or "immediately" in msg:
+        indicators.append("urgency_pressure")
+
+    if indicators:
+        scam_detected = True
+        scam_type = "banking_fraud"
+        risk_score = min(0.3 + (0.1 * len(indicators)), 0.9)
+
+    # --- UUID for traceability ---
+    request_id = str(uuid.uuid4())
 
     return {
+        "uuid": request_id,
         "scam_detected": scam_detected,
         "scam_type": scam_type,
-        "risk_score": risk_score,
+        "risk_score": round(risk_score, 2),
+        "indicators": indicators,
         "recommended_action": (
             "Do not respond. Block the sender and report the incident."
             if scam_detected
-            else
-            "No immediate threat detected. Remain cautious."
+            else "No immediate action required."
         )
     }
-
