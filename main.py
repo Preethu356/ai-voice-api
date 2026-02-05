@@ -113,7 +113,7 @@ API_KEY = "sarvadamana-ai-voice-2026"
 def honeypot_get():
     return {
         "status": "success",
-        "message": "Honeypot endpoint is live. Use POST to analyze scam messages."
+        "reply": "Why is my account being suspended?"
     }
 
 @app.post("/honeypot")
