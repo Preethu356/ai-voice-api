@@ -102,22 +102,27 @@ async def voice_detection(
 # PROBLEM 2: AGENTIC HONEYPOT (SCAM DETECTION)
 # =================================================
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Header, HTTPException
 from typing import Optional
-from uuid import uuid4
 
-app = FastAPI()
 API_KEY = "sarvadamana-ai-voice-2026"
 
-@app.get("/honeypot")
+# --------------------------------------------------
+# HONEYPOT – GET (conversation sanity check)
+# --------------------------------------------------
+@app.get("/honeypot", include_in_schema=True)
 def honeypot_get():
     return {
         "status": "success",
         "reply": "Why is my account being suspended?"
     }
 
-@app.post("/honeypot")
-async def honeypot(
+
+# --------------------------------------------------
+# HONEYPOT – POST (conversation analysis)
+# --------------------------------------------------
+@app.post("/honeypot", include_in_schema=True)
+async def honeypot_post(
     payload: dict,
     x_api_key: Optional[str] = Header(None)
 ):
@@ -125,23 +130,23 @@ async def honeypot(
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     message = payload.get("message", {})
-    text = message.get("text", "")
+    text = ""
+
+    if isinstance(message, dict):
+        text = message.get("text", "")
+    elif isinstance(message, str):
+        text = message
 
     text_lower = text.lower()
 
     scam_keywords = [
-        "blocked", "verify", "urgent", "click",
-        "otp", "suspended", "immediately"
+        "blocked", "verify", "urgent",
+        "click", "otp", "suspended",
+        "immediately"
     ]
 
     is_scam = any(word in text_lower for word in scam_keywords)
 
-    # ---- INTERNAL ONLY (not returned) ----
-    _internal_uuid = str(uuid4())
-    _risk_score = 0.6 if is_scam else 0.2
-    _indicators = ["urgency_pressure", "account_related"] if is_scam else []
-
-    # ---- GUVI EXPECTED RESPONSE (ONLY THIS) ----
     return {
         "status": "success",
         "reply": (
