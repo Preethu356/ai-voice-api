@@ -116,7 +116,9 @@ def honeypot_get():
         "status": "success",
         "reply": "Why is my account being suspended?"
     }
-
+@app.head("/honeypot")
+def honeypot_head():
+    return None
 
 # --------------------------------------------------
 # HONEYPOT – POST (conversation analysis)
