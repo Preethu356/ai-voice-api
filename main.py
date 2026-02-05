@@ -109,6 +109,13 @@ from uuid import uuid4
 app = FastAPI()
 API_KEY = "sarvadamana-ai-voice-2026"
 
+@app.get("/honeypot")
+def honeypot_get():
+    return {
+        "status": "success",
+        "message": "Honeypot endpoint is live. Use POST to analyze scam messages."
+    }
+
 @app.post("/honeypot")
 async def honeypot(
     payload: dict,
